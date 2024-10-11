@@ -1,0 +1,170 @@
+import os
+import hashlib
+from collections import defaultdict
+import tkinter as tk
+from tkinter import filedialog
+
+def get_file_hash(filename, block_size=65536):
+    sha1 = hashlib.sha1()
+    with open(filename, 'rb') as f:
+        while True:
+            data = f.read(block_size)
+            if not data:
+                break
+            sha1.update(data)
+    return sha1.hexdigest()
+
+def find_and_remove_duplicates(source_dir, target_dir, file_extension):
+    source_file_size_dict = defaultdict(list)
+
+    # Build a dictionary of source file sizes and corresponding paths
+    for foldername, subfolders, filenames in os.walk(source_dir):
+        for filename in filenames:
+            if filename.endswith(file_extension):
+                file_path = os.path.join(foldername, filename)
+                try:
+                    file_size = os.path.getsize(file_path)
+                    source_file_size_dict[(filename, file_size)].append(file_path)
+                except FileNotFoundError:
+                    print(f"File not found: {file_path}")
+
+    # Iterate through the target directory and check for duplicates
+    for foldername, subfolders, filenames in os.walk(target_dir):
+        for filename in filenames:
+            if filename.endswith(file_extension):
+                file_path = os.path.join(foldername, filename)
+                try:
+                    file_size = os.path.getsize(file_path)
+                    source_paths = source_file_size_dict.get((filename, file_size), [])
+
+                    # If there are duplicates in the source directory, remove the file from the target directory
+                    if len(source_paths) > 0:
+                        print(f"Duplicate file found in target directory '{file_path}'; removing...")
+                        os.remove(file_path)
+                except FileNotFoundError:
+                    print(f"File not found: {file_path}")
+
+def select_source_folder():
+    source_dir = filedialog.askdirectory()
+    source_entry.delete(0, tk.END)
+    source_entry.insert(0, source_dir)
+
+def select_target_folder():
+    target_dir = filedialog.askdirectory()
+    target_entry.delete(0, tk.END)
+    target_entry.insert(0, target_dir)
+
+def start_processing():
+    source_directory = source_entry.get()
+    target_directory = target_entry.get()
+    file_extension = ".aiff"
+    file_extension2 = ".aif"
+    file_extension3 = ".mkv"
+    file_extension4 = ".mp4"
+    file_extension5 = ".wav"
+    
+    find_and_remove_duplicates(source_directory, target_directory, file_extension)
+    find_and_remove_duplicates(source_directory, target_directory, file_extension2)
+    find_and_remove_duplicates(source_directory, target_directory, file_extension3)
+    find_and_remove_duplicates(source_directory, target_directory, file_extension4)
+    find_and_remove_duplicates(source_directory, target_directory, file_extension5)
+
+# Create the Tkinter window
+root = tk.Tk()
+root.title("Duplicate File Remover")
+
+# Create and place widgets
+source_label = tk.Label(root, text="Source Folder:")
+source_label.grid(row=0, column=0, padx=10, pady=5, sticky=tk.E)
+
+source_entry = tk.Entry(root, width=50)
+source_entry.grid(row=0, column=1, padx=10, pady=5)
+
+source_button = tk.Button(root, text="Browse", command=select_source_folder)
+source_button.grid(row=0, column=2, padx=10, pady=5)
+
+target_label = tk.Label(root, text="Target Folder:")
+target_label.grid(row=1, column=0, padx=10, pady=5, sticky=tk.E)
+
+target_entry = tk.Entry(root, width=50)
+target_entry.grid(row=1, column=1, padx=10, pady=5)
+
+target_button = tk.Button(root, text="Browse", command=select_target_folder)
+target_button.grid(row=1, column=2, padx=10, pady=5)
+
+start_button = tk.Button(root, text="Start Processing", command=start_processing)
+start_button.grid(row=2, column=1, padx=10, pady=10)
+
+# Run the Tkinter event loop
+root.mainloop()
+
+import os
+import shutil
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+def get_folder_size(folder_path):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(folder_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_size += os.path.getsize(fp)
+    return total_size
+
+def find_dvd_folders(root_folder):
+    dvd_folders = {}
+    for dirpath, dirnames, filenames in os.walk(root_folder):
+        for dirname in dirnames:
+            folder_path = os.path.join(dirpath, dirname)
+            video_ts_path = os.path.join(folder_path, "VIDEO_TS")
+            if os.path.isdir(video_ts_path):
+                dvd_folders[dirname] = get_folder_size(video_ts_path)
+    return dvd_folders
+
+def delete_matching_folders(source_dvds, target_folder):
+    deleted_folders = []
+    for dirpath, dirnames, filenames in os.walk(target_folder):
+        for dirname in dirnames:
+            target_folder_path = os.path.join(dirpath, dirname)
+            video_ts_path = os.path.join(target_folder_path, "VIDEO_TS")
+            if dirname in source_dvds and os.path.isdir(video_ts_path):
+                if get_folder_size(video_ts_path) == source_dvds[dirname]:
+                    shutil.rmtree(target_folder_path)
+                    deleted_folders.append(target_folder_path)
+    return deleted_folders
+
+def select_source_folder():
+    source_folder = filedialog.askdirectory(title="Select Source Folder")
+    if source_folder:
+        source_label.config(text=f"Source Folder: {source_folder}")
+        global source_dvds
+        source_dvds = find_dvd_folders(source_folder)
+
+def select_target_folder():
+    target_folder = filedialog.askdirectory(title="Select Target Folder")
+    if target_folder:
+        target_label.config(text=f"Target Folder: {target_folder}")
+        deleted_folders = delete_matching_folders(source_dvds, target_folder)
+        if deleted_folders:
+            messagebox.showinfo("Folders Deleted", f"Deleted the following folders:\n" + "\n".join(deleted_folders))
+        else:
+            messagebox.showinfo("No Matches Found", "No matching folders were found.")
+
+source_dvds = {}
+
+root = tk.Tk()
+root.title("DVD Folder Cleaner")
+
+source_button = tk.Button(root, text="Select Source Folder", command=select_source_folder)
+source_button.pack(pady=10)
+
+source_label = tk.Label(root, text="Source Folder: None")
+source_label.pack(pady=5)
+
+target_button = tk.Button(root, text="Select Target Folder", command=select_target_folder)
+target_button.pack(pady=10)
+
+target_label = tk.Label(root, text="Target Folder: None")
+target_label.pack(pady=5)
+
+root.mainloop()
