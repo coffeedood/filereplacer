@@ -1,0 +1,62 @@
+import os
+import shutil
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+def select_source_folder():
+    source_folder = filedialog.askdirectory(title="Select Source Folder")
+    if source_folder:
+        source_folder_var.set(source_folder)
+
+def select_target_folder():
+    target_folder = filedialog.askdirectory(title="Select Target Folder")
+    if target_folder:
+        target_folder_var.set(target_folder)
+
+def move_mkv_files():
+    source_folder = source_folder_var.get()
+    target_folder = target_folder_var.get()
+
+    if not source_folder or not target_folder:
+        messagebox.showerror("Error", "Please select both source and target folders.")
+        return
+
+    mkv_files = []
+    for root, _, files in os.walk(source_folder):
+        for file in files:
+            if file.endswith(".mkv"):
+                mkv_files.append(os.path.join(root, file))
+
+    if not mkv_files:
+        messagebox.showinfo("No MKV Files", "No .mkv files found in the selected source folder.")
+        return
+
+    for file in mkv_files:
+        try:
+            shutil.move(file, target_folder)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not move {file}: {e}")
+
+    messagebox.showinfo("Success", f"Moved {len(mkv_files)} .mkv files to the target folder.")
+
+# Set up the main Tkinter window
+root = tk.Tk()
+root.title("MKV File Mover")
+
+source_folder_var = tk.StringVar()
+target_folder_var = tk.StringVar()
+
+# UI for selecting source folder
+tk.Label(root, text="Source Folder:").pack(pady=5)
+tk.Entry(root, textvariable=source_folder_var, width=50).pack(pady=5)
+tk.Button(root, text="Select Source Folder", command=select_source_folder).pack(pady=5)
+
+# UI for selecting target folder
+tk.Label(root, text="Target Folder:").pack(pady=5)
+tk.Entry(root, textvariable=target_folder_var, width=50).pack(pady=5)
+tk.Button(root, text="Select Target Folder", command=select_target_folder).pack(pady=5)
+
+# Move button
+tk.Button(root, text="Move MKV Files", command=move_mkv_files).pack(pady=20)
+
+root.mainloop()
